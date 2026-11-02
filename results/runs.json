@@ -1,0 +1,185 @@
+{
+ "pricing_usd_per_mtok": {
+  "claude-haiku-5-5": {
+   "in": 0.1,
+   "out": 0.5,
+   "note": "prompts up to 100k tokens"
+  },
+  "claude-sonnet-5-5": {
+   "in": 2.0,
+   "out": 10.0
+  },
+  "source": "https://platform.claude.com/docs/en/about-claude/pricing (fetched 2026-11-01)"
+ },
+ "runs": [
+  {
+   "exec": 5,
+   "version": "v1",
+   "source": "Build-log article (pasted text)",
+   "source_type": "Transcript or text",
+   "source_words": 899,
+   "started": "2026-11-01T12:35:06.604Z",
+   "stopped": "2026-11-01T12:36:18.359Z",
+   "brief_parsed": false,
+   "brief_stop_reason": "max_tokens",
+   "brief_in": 1848,
+   "brief_out": 2000,
+   "brief_thinking": 1210,
+   "draft_in": 14178,
+   "draft_out": 8905,
+   "draft_thinking": null,
+   "passed": 3,
+   "drafts": 5,
+   "flags": [
+    "short_video_script: [CHECK] asks for handle/link to show in CTA",
+    "seo_blog_draft: [CHECK] seo_keyword cut off in truncated brief"
+   ]
+  },
+  {
+   "exec": 6,
+   "version": "v1",
+   "source": "GitLab Handbook: Product Management (Firecrawl, CC BY-SA 4.0)",
+   "source_type": "Blog URL",
+   "source_words": null,
+   "started": "2026-11-01T12:35:13.657Z",
+   "stopped": "2026-11-01T12:36:42.037Z",
+   "brief_parsed": null,
+   "total_in": 101820,
+   "total_out": 12166,
+   "passed": 4,
+   "drafts": 5,
+   "flags": [
+    "seo_blog_draft: [CHECK] placeholder"
+   ]
+  },
+  {
+   "exec": 7,
+   "version": "v1",
+   "source": "JFK Rice speech excerpt, public domain (W3C test asset)",
+   "source_type": "Audio file URL",
+   "started": "2026-11-01T12:35:14.434Z",
+   "stopped": "2026-11-01T12:35:16.913Z",
+   "audio_seconds": 28,
+   "transcribe_ms": 2208,
+   "source_words": 67,
+   "result": "rejected by 150-word guard, 0 LLM tokens"
+  },
+  {
+   "exec": 8,
+   "version": "v2",
+   "source": "Build-log article (pasted text)",
+   "source_type": "Transcript or text",
+   "source_words": 899,
+   "started": "2026-11-01T12:39:13.542Z",
+   "stopped": "2026-11-01T12:40:21.015Z",
+   "brief_parsed": true,
+   "brief_stop_reason": "end_turn",
+   "brief_in": 1848,
+   "brief_out": 1971,
+   "brief_thinking": 688,
+   "draft_in": 16833,
+   "draft_out": 8470,
+   "draft_thinking": 4489,
+   "passed": 4,
+   "drafts": 5,
+   "flags": [
+    "seo_blog_draft: [CHECK] asks for real timing/pass-rate/edit-rate numbers instead of inventing them"
+   ],
+   "drafts_detail": {
+    "linkedin_post": {
+     "words": 193,
+     "in": 3386,
+     "out": 1334,
+     "thinking": 985
+    },
+    "x_thread": {
+     "words": 321,
+     "in": 3336,
+     "out": 1541,
+     "thinking": 977
+    },
+    "newsletter_section": {
+     "words": 288,
+     "in": 3343,
+     "out": 1172,
+     "thinking": 698
+    },
+    "short_video_script": {
+     "words": 246,
+     "in": 3367,
+     "out": 1612,
+     "thinking": 1081
+    },
+    "seo_blog_draft": {
+     "words": 1176,
+     "in": 3401,
+     "out": 2811,
+     "thinking": 748
+    }
+   }
+  },
+  {
+   "exec": 9,
+   "version": "v2",
+   "source": "GitLab Handbook: Product Management (Firecrawl, CC BY-SA 4.0)",
+   "source_type": "Blog URL",
+   "source_words": 6064,
+   "started": "2026-11-01T12:39:14.181Z",
+   "stopped": "2026-11-01T12:40:35.305Z",
+   "brief_parsed": true,
+   "brief_stop_reason": "end_turn",
+   "brief_in": 16482,
+   "brief_out": 2623,
+   "brief_thinking": 964,
+   "draft_in": 91953,
+   "draft_out": 9127,
+   "draft_thinking": 5231,
+   "passed": 4,
+   "drafts": 5,
+   "flags": [
+    "x_thread: post 4 is 281 chars (prompt asked for under 270, gate limit 280)"
+   ]
+  },
+  {
+   "exec": 10,
+   "version": "v2 gate",
+   "source": "Results write-up (pasted, 630 words)",
+   "purpose": "dogfood",
+   "started": "2026-11-01T12:42:10.671Z",
+   "stopped": "2026-11-01T12:43:21.546Z",
+   "brief_parsed": true,
+   "brief_in": 1468,
+   "brief_out": 2133,
+   "brief_thinking": 780,
+   "draft_in": 15378,
+   "draft_out": 8922,
+   "draft_thinking": 5018,
+   "passed": 0,
+   "drafts": 5,
+   "flags": [
+    "all 5: false positive, drafts quoted the phrase '[CHECK] note' from the source"
+   ]
+  },
+  {
+   "exec": 11,
+   "version": "v3 gate",
+   "source": "Results write-up (pasted, 630 words)",
+   "purpose": "dogfood",
+   "started": "2026-11-01T12:44:44.871Z",
+   "stopped": "2026-11-01T12:45:59.992Z",
+   "brief_parsed": true,
+   "brief_in": 1468,
+   "brief_out": 2189,
+   "brief_thinking": 665,
+   "draft_in": 16213,
+   "draft_out": 9238,
+   "draft_thinking": 5240,
+   "passed": 4,
+   "drafts": 5,
+   "flags": [
+    "short_video_script: [CHECK: ...] placeholder"
+   ],
+   "published_draft": "linkedin_post, 20.3% of words changed before publishing (48 of 236)"
+  }
+ ]
+}

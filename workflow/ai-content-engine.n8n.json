@@ -1,0 +1,900 @@
+{
+  "name": "AI Content Engine",
+  "nodes": [
+    {
+      "id": "n-intake",
+      "name": "Content Engine Intake",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "4ea8f5eb-9e43-44dd-b6e8-ad6f770d5dc0",
+      "parameters": {
+        "formTitle": "AI Content Engine",
+        "formDescription": "Drop in one long-form piece. Get five channel-ready drafts on the approval board.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Source title",
+              "fieldName": "source_title",
+              "fieldType": "text",
+              "requiredField": true,
+              "placeholder": "e.g. How we cut onboarding time in half"
+            },
+            {
+              "fieldLabel": "Source type",
+              "fieldName": "source_type",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Transcript or text"
+                  },
+                  {
+                    "option": "Blog URL"
+                  },
+                  {
+                    "option": "Audio file URL"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Source URL",
+              "fieldName": "source_url",
+              "fieldType": "text",
+              "placeholder": "https://... (blog post or audio file)"
+            },
+            {
+              "fieldLabel": "Transcript or text",
+              "fieldName": "source_text",
+              "fieldType": "textarea",
+              "placeholder": "Paste a YouTube or podcast transcript, or article text"
+            },
+            {
+              "fieldLabel": "Voice notes (optional)",
+              "fieldName": "voice_notes",
+              "fieldType": "textarea",
+              "placeholder": "Leave empty to use the default voice"
+            }
+          ]
+        },
+        "responseMode": "onReceived",
+        "options": {
+          "appendAttribution": false,
+          "respondWithOptions": {
+            "values": {
+              "respondWith": "text",
+              "formSubmittedText": "Got it. Five drafts will land on the approval board in about a minute."
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "n-normalize",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n1",
+              "name": "run_id",
+              "value": "={{ \"run-\" + $execution.id }}",
+              "type": "string"
+            },
+            {
+              "id": "n2",
+              "name": "source_title",
+              "value": "={{ ($json.source_title ?? $json[\"Source title\"] ?? \"Untitled\").trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "n3",
+              "name": "source_type",
+              "value": "={{ $json.source_type ?? $json[\"Source type\"] ?? \"Transcript or text\" }}",
+              "type": "string"
+            },
+            {
+              "id": "n4",
+              "name": "source_url",
+              "value": "={{ ($json.source_url ?? $json[\"Source URL\"] ?? \"\").trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "n5",
+              "name": "source_text",
+              "value": "={{ $json.source_text ?? $json[\"Transcript or text\"] ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "n6",
+              "name": "voice_notes",
+              "value": "={{ ($json.voice_notes ?? $json[\"Voice notes (optional)\"] ?? \"\").trim() || \"Plain, direct, first person. Short sentences. Specific numbers over adjectives. No hype words. Honest about trade-offs and what did not work. No emojis. No em dashes.\" }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-route",
+      "name": "Route by Source Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputKey": "blog",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.source_type }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "Blog URL"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "audio",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.source_type }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "Audio file URL"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Text"
+        }
+      }
+    },
+    {
+      "id": "n-scrape",
+      "name": "Scrape Blog Post",
+      "type": "@mendable/n8n-nodes-firecrawl.firecrawl",
+      "typeVersion": 1,
+      "position": [
+        680,
+        100
+      ],
+      "parameters": {
+        "resource": "Scraping",
+        "operation": "scrape",
+        "url": "={{ $json.source_url }}",
+        "scrapeOptions": {
+          "options": {
+            "formats": {
+              "format": [
+                {
+                  "type": "markdown"
+                }
+              ]
+            },
+            "onlyMainContent": true
+          }
+        }
+      }
+    },
+    {
+      "id": "n-usescraped",
+      "name": "Use Scraped Text",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        900,
+        100
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "source_body",
+              "value": "={{ $json.markdown ?? $json.data?.markdown ?? \"\" }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-download",
+      "name": "Download Audio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        680,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.source_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "n-transcribe",
+      "name": "Transcribe Audio",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        900,
+        300
+      ],
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "binaryPropertyName": "data",
+        "options": {
+          "language": "en"
+        }
+      }
+    },
+    {
+      "id": "n-usetranscript",
+      "name": "Use Transcript",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        300
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "t1",
+              "name": "source_body",
+              "value": "={{ $json.text ?? \"\" }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-usepasted",
+      "name": "Use Pasted Text",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        680,
+        500
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "source_body",
+              "value": "={{ $json.source_text }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-prepare",
+      "name": "Prepare Source",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const inp = $('Normalize Input').first().json;\nconst raw = String(($input.first().json.source_body || '')).replace(/\\r/g, '').trim();\nconst words = raw.split(/\\s+/).filter(Boolean);\nconst MAX_WORDS = 9000;\nconst body = words.slice(0, MAX_WORDS).join(' ');\nreturn [{ json: {\n  run_id: inp.run_id,\n  source_title: inp.source_title,\n  source_type: inp.source_type,\n  source_url: inp.source_url,\n  voice_notes: inp.voice_notes,\n  source_body: words.length > MAX_WORDS ? body : raw,\n  source_word_count: words.length,\n  truncated: words.length > MAX_WORDS\n} }];"
+      }
+    },
+    {
+      "id": "n-enough",
+      "name": "Enough Source Text?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1560,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.source_word_count }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              },
+              "rightValue": 150
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "n-reject",
+      "name": "Reject Short Source",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1780,
+        500
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "error",
+              "value": "Source has fewer than 150 words, which is too little to repurpose without inventing content. Nothing was generated.",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-brief",
+      "name": "Build Content Brief",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        200
+      ],
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-haiku-5-5"
+        },
+        "messages": {
+          "values": [
+            {
+              "role": "user",
+              "content": "=SOURCE TITLE: {{ $json.source_title }}\n\nSOURCE:\n<source>\n{{ $json.source_body }}\n</source>\n\nRead the source and return a content brief as JSON only, no prose, no code fences, with exactly these keys:\n{\"core_message\": \"one sentence\", \"audience\": \"who this is for\", \"key_points\": [{\"point\": \"...\", \"evidence\": \"detail from the source that supports it\"}], \"facts\": [\"every number, name or claim worth reusing, copied exactly as written in the source\"], \"quotable_lines\": [\"short lines from the source that work on their own\"], \"hook_angles\": [\"3 different opening angles\"], \"lesson\": \"the one non-obvious takeaway\", \"seo_keyword\": \"a realistic search phrase\", \"cta\": \"a natural next step for the reader\"}\nUse 4 to 6 key_points. Only include what the source supports."
+            }
+          ]
+        },
+        "simplify": false,
+        "options": {
+          "maxTokens": 8000,
+          "system": "You are a senior content strategist. You extract, you do not invent. If the source does not say something, it does not go in the brief."
+        }
+      }
+    },
+    {
+      "id": "n-plan",
+      "name": "Plan Channel Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const src = $('Prepare Source').first().json;\nconst res = $input.first().json;\nconst text = Array.isArray(res.content) ? res.content.map(function (c) { return c.text || ''; }).join('') : (res.text || '');\nlet brief;\nlet briefParsed = true;\ntry {\n  brief = JSON.parse(text.replace(/^\\s*\\x60\\x60\\x60(json)?/i, '').replace(/\\x60\\x60\\x60\\s*$/, '').trim());\n} catch (e) {\n  brief = { raw_brief: text };\n  briefParsed = false;\n}\nconst briefStr = JSON.stringify(brief, null, 2);\nconst usage = res.usage || {};\nconst details = usage.output_tokens_details || {};\n\nconst rules = [\n  'Use only facts, numbers and names that appear in the SOURCE or BRIEF. Never invent results, metrics, people or quotes.',\n  'If a detail is needed but missing, write [CHECK: what is missing] instead of guessing.',\n  'Write in this voice: ' + src.voice_notes,\n  'Never use these words: game-changer, revolutionize, unlock, supercharge, delve, leverage, cutting-edge, seamless, in today\\'s fast-paced world.',\n  'Output only the deliverable. No preamble, no notes to the editor.'\n].join('\\n- ');\n\nconst channels = [\n  { channel: 'linkedin_post', label: 'LinkedIn post', spec: 'A LinkedIn post of 150 to 250 words. Line 1 is a hook of at most 15 words built on a result, a surprise or a strong opinion. Then 2 lines of context. Then a short \"What I built\" or \"What happened\" section using → arrows. Then one PM-style lesson. End with one question that invites comments. At most 3 hashtags on the last line. No links in the body.' },\n  { channel: 'x_thread', label: 'X thread', spec: 'An X thread of 5 to 8 posts. Separate posts with a line containing only ---. Each post must be under 270 characters. Post 1 is the hook and must stand alone. Last post sums up the lesson. No hashtags. Do not number the posts.' },\n  { channel: 'newsletter_section', label: 'Newsletter section', spec: 'A newsletter section of 180 to 300 words. First line: \"Subject: \" followed by a subject line under 60 characters. Second line: a ## heading. Then short paragraphs, one concrete example from the source, and a one-line takeaway in bold at the end.' },\n  { channel: 'short_video_script', label: 'Short video script', spec: 'A 45 to 60 second vertical video script, 110 to 170 spoken words. Use these labelled parts on their own lines: HOOK (0-3s), SETUP, PAYOFF, CTA. Under each part write the spoken line, and add [ON SCREEN: ...] cues on separate lines. The hook must work with the sound off.' },\n  { channel: 'seo_blog_draft', label: 'SEO blog draft', spec: 'An SEO blog draft of 700 to 1100 words in markdown. First three lines exactly: \"Title: ...\", \"Meta description: ...\" (under 155 characters), \"Target keyword: ...\" (use the brief seo_keyword). Then the article with one # H1, at least three ## H2 sections, a short FAQ with 2 questions, and a conclusion. Use the target keyword in the H1 and in the first 100 words.' }\n];\n\nreturn channels.map(function (c) {\n  return { json: {\n    run_id: src.run_id,\n    source_title: src.source_title,\n    source_type: src.source_type,\n    channel: c.channel,\n    channel_label: c.label,\n    brief_parsed: briefParsed,\n    brief_stop_reason: res.stop_reason || '',\n    brief_input_tokens: usage.input_tokens || 0,\n    brief_output_tokens: usage.output_tokens || 0,\n    brief_thinking_tokens: details.thinking_tokens || 0,\n    system_prompt: 'You turn one long-form source into a single channel-ready draft. Rules:\\n- ' + rules,\n    user_prompt: 'CHANNEL: ' + c.label + '\\nSPEC: ' + c.spec + '\\n\\nBRIEF:\\n' + briefStr + '\\n\\nSOURCE (' + src.source_title + '):\\n<source>\\n' + src.source_body + '\\n</source>\\n\\nWrite the ' + c.label + ' now.'\n  } };\n});\n"
+      }
+    },
+    {
+      "id": "n-draft",
+      "name": "Write Channel Draft",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        2220,
+        200
+      ],
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-sonnet-5-5"
+        },
+        "messages": {
+          "values": [
+            {
+              "role": "user",
+              "content": "={{ $json.user_prompt }}"
+            }
+          ]
+        },
+        "simplify": false,
+        "options": {
+          "maxTokens": 3000,
+          "system": "={{ $json.system_prompt }}"
+        }
+      }
+    },
+    {
+      "id": "n-gate",
+      "name": "Quality Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const drafts = $input.all();\nconst jobs = $('Plan Channel Jobs').all();\nconst src = $('Prepare Source').first().json;\nconst sourceText = (src.source_body || '').replace(/,/g, '').toLowerCase();\nconst banned = ['game-changer', 'game changer', 'revolutioniz', 'unlock', 'supercharge', 'delve', 'leverage', 'cutting-edge', 'seamless', 'fast-paced world'];\n\nfunction textOf(j) {\n  if (Array.isArray(j.content)) return j.content.map(function (c) { return c.text || ''; }).join('').trim();\n  return String(j.merged_response || j.text || j.output || '').trim();\n}\nfunction wc(s) { return s.split(/\\s+/).filter(Boolean).length; }\n\nreturn drafts.map(function (d, i) {\n  const job = jobs[i].json;\n  const draft = textOf(d.json);\n  const words = wc(draft);\n  const notes = [];\n  const lower = draft.toLowerCase();\n\n  banned.forEach(function (b) { if (lower.indexOf(b) !== -1) notes.push('banned word: ' + b); });\n  if (/\\[check:/i.test(draft)) notes.push('has [CHECK: ...] placeholders to resolve');\n  if (draft.indexOf('\\u2014') !== -1) notes.push('contains em dash');\n\n  const nums = (draft.match(/\\d[\\d,.]*%?/g) || []).map(function (n) { return n.replace(/,/g, '').replace(/[.]$/, ''); });\n  const unknown = nums.filter(function (n) {\n    const v = parseFloat(n);\n    if (!isNaN(v) && v <= 10 && n.indexOf('%') === -1) return false;\n    return sourceText.indexOf(n.toLowerCase()) === -1 && sourceText.indexOf(n.replace('%', '').toLowerCase()) === -1;\n  });\n  if (unknown.length) notes.push('numbers not found in source: ' + Array.from(new Set(unknown)).join(', '));\n\n  if (job.channel === 'linkedin_post') {\n    if (words < 120 || words > 270) notes.push('length ' + words + ' words (target 150-250)');\n    const tags = (draft.match(/#\\w+/g) || []).length;\n    if (tags > 3) notes.push(tags + ' hashtags (max 3)');\n    if (/https?:\\/\\//.test(draft)) notes.push('link in body');\n    if (draft.split('\\n')[0].split(/\\s+/).length > 18) notes.push('hook line too long');\n  }\n  if (job.channel === 'x_thread') {\n    const posts = draft.split(/\\n\\s*---\\s*\\n/).map(function (p) { return p.trim(); }).filter(Boolean);\n    if (posts.length < 5 || posts.length > 8) notes.push(posts.length + ' posts (target 5-8)');\n    posts.forEach(function (p, k) { if (p.length > 280) notes.push('post ' + (k + 1) + ' is ' + p.length + ' chars'); });\n  }\n  if (job.channel === 'newsletter_section') {\n    if (!/^subject:/i.test(draft)) notes.push('missing Subject line');\n    if (words < 160 || words > 330) notes.push('length ' + words + ' words (target 180-300)');\n  }\n  if (job.channel === 'short_video_script') {\n    ['HOOK', 'SETUP', 'PAYOFF', 'CTA'].forEach(function (p) { if (draft.indexOf(p) === -1) notes.push('missing ' + p); });\n    const spoken = draft.split('\\n').filter(function (l) { return l.trim() && !/^\\s*\\[ON SCREEN/i.test(l) && !/^\\s*\\**(HOOK|SETUP|PAYOFF|CTA)/i.test(l); }).join(' ');\n    const sw = wc(spoken);\n    if (sw < 100 || sw > 185) notes.push('spoken length ' + sw + ' words (target 110-170)');\n  }\n  if (job.channel === 'seo_blog_draft') {\n    if (!/^title:/im.test(draft)) notes.push('missing Title');\n    const meta = (draft.match(/^meta description:\\s*(.*)$/im) || [])[1] || '';\n    if (!meta) notes.push('missing meta description');\n    else if (meta.length > 160) notes.push('meta description ' + meta.length + ' chars');\n    const h2 = (draft.match(/^## /gm) || []).length;\n    if (h2 < 3) notes.push('only ' + h2 + ' H2 sections');\n    if (words < 650 || words > 1200) notes.push('length ' + words + ' words (target 700-1100)');\n  }\n\n  return { json: {\n    run_id: job.run_id,\n    source_title: job.source_title,\n    source_type: job.source_type,\n    channel: job.channel,\n    draft: draft,\n    word_count: words,\n    gate_passed: notes.length === 0,\n    gate_notes: notes.length ? notes.join('; ') : 'passed',\n    status: 'needs_review',\n    final_text: '',\n    input_tokens: (d.json.usage && d.json.usage.input_tokens) || 0,\n    output_tokens: (d.json.usage && d.json.usage.output_tokens) || 0,\n    thinking_tokens: (d.json.usage && d.json.usage.output_tokens_details && d.json.usage.output_tokens_details.thinking_tokens) || 0,\n    model: d.json.model || ''\n  } };\n});"
+      }
+    },
+    {
+      "id": "n-save",
+      "name": "Save to Approval Board",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2660,
+        200
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Content Engine Approval Board (select yours after import)"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "run_id": "={{ $json.run_id }}",
+            "source_title": "={{ $json.source_title }}",
+            "source_type": "={{ $json.source_type }}",
+            "channel": "={{ $json.channel }}",
+            "draft": "={{ $json.draft }}",
+            "word_count": "={{ $json.word_count }}",
+            "gate_passed": "={{ $json.gate_passed }}",
+            "gate_notes": "={{ $json.gate_notes }}",
+            "status": "={{ $json.status }}",
+            "final_text": "={{ $json.final_text }}",
+            "input_tokens": "={{ $json.input_tokens }}",
+            "output_tokens": "={{ $json.output_tokens }}",
+            "model": "={{ $json.model }}",
+            "thinking_tokens": "={{ $json.thinking_tokens }}"
+          },
+          "schema": [
+            {
+              "id": "run_id",
+              "displayName": "run_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source_title",
+              "displayName": "source_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source_type",
+              "displayName": "source_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "draft",
+              "displayName": "draft",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "word_count",
+              "displayName": "word_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "gate_passed",
+              "displayName": "gate_passed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "gate_notes",
+              "displayName": "gate_notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "final_text",
+              "displayName": "final_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "input_tokens",
+              "displayName": "input_tokens",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "output_tokens",
+              "displayName": "output_tokens",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "model",
+              "displayName": "model",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "thinking_tokens",
+              "displayName": "thinking_tokens",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-summary",
+      "name": "Run Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const rows = $('Quality Gate').all().map(function (r) { return r.json; });\nconst job = $('Plan Channel Jobs').first().json;\nfunction sum(k) { return rows.reduce(function (a, r) { return a + (r[k] || 0); }, 0); }\nreturn [{ json: {\n  run_id: job.run_id,\n  source_title: job.source_title,\n  brief_parsed: job.brief_parsed,\n  brief_stop_reason: job.brief_stop_reason,\n  drafts: rows.length,\n  passed_gate: rows.filter(function (r) { return r.gate_passed; }).length,\n  flagged: rows.filter(function (r) { return !r.gate_passed; }).map(function (r) { return r.channel + ': ' + r.gate_notes; }),\n  brief_input_tokens: job.brief_input_tokens,\n  brief_output_tokens: job.brief_output_tokens,\n  brief_thinking_tokens: job.brief_thinking_tokens,\n  draft_input_tokens: sum('input_tokens'),\n  draft_output_tokens: sum('output_tokens'),\n  draft_thinking_tokens: sum('thinking_tokens'),\n  llm_calls: rows.length + 1\n} }];\n"
+      }
+    },
+    {
+      "id": "n-note",
+      "name": "About this workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -40
+      ],
+      "parameters": {
+        "content": "## AI Content Engine\nOne long-form source in, five channel drafts out.\n\n1. Ingest: blog URL (Firecrawl), audio URL (Whisper) or pasted transcript\n2. Brief: extract core message, facts and hooks (no invention)\n3. Draft: one call per channel with channel spec + brand voice\n4. Gate: length, format, banned words, and every number checked against the source\n5. Review: rows land on the Content Engine Approval Board as needs_review",
+        "color": 4,
+        "width": 520,
+        "height": 260
+      }
+    }
+  ],
+  "connections": {
+    "Content Engine Intake": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Route by Source Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Source Type": {
+      "main": [
+        [
+          {
+            "node": "Scrape Blog Post",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Download Audio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Use Pasted Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Blog Post": {
+      "main": [
+        [
+          {
+            "node": "Use Scraped Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use Scraped Text": {
+      "main": [
+        [
+          {
+            "node": "Prepare Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Audio": {
+      "main": [
+        [
+          {
+            "node": "Transcribe Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe Audio": {
+      "main": [
+        [
+          {
+            "node": "Use Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use Transcript": {
+      "main": [
+        [
+          {
+            "node": "Prepare Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use Pasted Text": {
+      "main": [
+        [
+          {
+            "node": "Prepare Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Source": {
+      "main": [
+        [
+          {
+            "node": "Enough Source Text?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enough Source Text?": {
+      "main": [
+        [
+          {
+            "node": "Build Content Brief",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Short Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Content Brief": {
+      "main": [
+        [
+          {
+            "node": "Plan Channel Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Channel Jobs": {
+      "main": [
+        [
+          {
+            "node": "Write Channel Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Channel Draft": {
+      "main": [
+        [
+          {
+            "node": "Quality Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quality Gate": {
+      "main": [
+        [
+          {
+            "node": "Save to Approval Board",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Approval Board": {
+      "main": [
+        [
+          {
+            "node": "Run Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "note": "Credentials are not included. Add your own Anthropic, OpenAI and Firecrawl credentials (or n8n AI credits) after import, and create the approval board data table (see README)."
+  }
+}

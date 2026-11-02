@@ -1,0 +1,18 @@
+My AI content engine's most useful output was a draft that refused to finish.
+
+One strong long-form piece gets published once and dies, because every other format is another rewrite.
+
+So I built an n8n workflow that turns one source into five channel drafts on an approval board. Nothing posts automatically.
+
+What happened:
+→ 5 runs on November 1. 4 full runs made 20 drafts, and 15 passed the quality gate first try.
+→ Full runs took 67 to 88 seconds and cost about 12 to 28 cents. Every draft call resends the full source, so long sources cost more.
+→ A 28-second audio clip came to 67 words. The guard stopped it before any AI call.
+→ I told the model to keep X posts under 270 characters. One came back at 281. Code caught it.
+→ My first version cut off the brief mid-sentence. The SEO draft noticed its keyword was missing and flagged the gap instead of inventing one.
+
+The lesson: put the rules you cannot afford to break in code, not in the prompt. The prompt is a request. The code is a guarantee. Then design the failure state as carefully as the happy path. A draft that says "I need a real number here" is worth more than one that sounds finished.
+
+Would you let AI post for you, or only draft?
+
+#AI #ProductManagement #ContentStrategy
